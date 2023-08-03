@@ -6,6 +6,7 @@ import (
 	"github.com/flanksource/duty/models"
 	"github.com/flanksource/incident-commander/api"
 	"github.com/flanksource/incident-commander/utils"
+	"github.com/google/uuid"
 	"gorm.io/gorm/clause"
 )
 
@@ -27,34 +28,23 @@ func UpdateIdentityState(ctx *api.Context, id, state string) error {
 	return ctx.DB().Table("identities").Where("id = ?", id).Update("state", state).Error
 }
 
-type CreateUserRequest struct {
-	Username   string
-	Password   string
-	Properties models.PersonProperties
-}
-
-func CreatePerson(ctx *api.Context, request CreateUserRequest) (string, error) {
+func CreatePerson(ctx *api.Context, username, password string) (uuid.UUID, error) {
 	tx := ctx.DB().Begin()
 	defer tx.Rollback()
 
-	person := models.Person{
-		Name:       request.Username,
-		Type:       "agent",
-		Properties: request.Properties,
-	}
-
+	person := models.Person{Name: username, Type: "agent"}
 	if err := tx.Clauses(clause.Returning{Columns: []clause.Column{{Name: "id"}}}).Create(&person).Error; err != nil {
-		return "", err
+		return uuid.Nil, err
 	}
 
 	accessToken := models.AccessToken{
-		Value:     request.Password, // TODO: bcrypt
+		Value:     password, // TODO: bcrypt
 		PersonID:  person.ID,
 		ExpiresAt: time.Now().Add(time.Hour), // TODO: decide on this one
 	}
 	if err := tx.Create(&accessToken).Error; err != nil {
-		return "", err
+		return uuid.Nil, err
 	}
 
-	return person.ID.String(), tx.Commit().Error
+	return person.ID, tx.Commit().Error
 }

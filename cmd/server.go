@@ -59,7 +59,7 @@ func createHTTPServer(gormDB *gorm.DB) *echo.Echo {
 	e.Use(echoprometheus.NewMiddleware("mission_control"))
 	e.GET("/metrics", echoprometheus.NewHandler())
 
-	kratosHandler := auth.NewKratosHandler(kratosAPI, kratosAdminAPI, db.PostgRESTJWTSecret)
+	kratosHandler := auth.NewKratosHandler(kratosAPI, kratosAdminAPI, db.PostgRESTJWTSecret, gormDB)
 	if enableAuth {
 		adminUserID, err := kratosHandler.CreateAdminUser(context.Background())
 		if err != nil {
@@ -116,7 +116,7 @@ func createHTTPServer(gormDB *gorm.DB) *echo.Echo {
 	if api.UpstreamConf.IsPartiallyFilled() {
 		logger.Warnf("Please ensure that all the required flags for upstream is supplied.")
 	}
-	upstreamGroup := e.Group("/upstream")
+	upstreamGroup := e.Group("/upstream", rbac.Authorization(rbac.ObjectAgentPush, rbac.ActionWrite))
 	upstreamGroup.POST("/push", upstream.PushUpstream)
 	upstreamGroup.GET("/pull/:agent_name", upstream.Pull)
 	upstreamGroup.GET("/canary/pull/:agent_name", canary.Pull)
