@@ -28,7 +28,7 @@ func UpdateIdentityState(ctx *api.Context, id, state string) error {
 	return ctx.DB().Table("identities").Where("id = ?", id).Update("state", state).Error
 }
 
-func CreatePerson(ctx *api.Context, username, password string) (uuid.UUID, error) {
+func CreatePerson(ctx *api.Context, username, hashedPassword string) (uuid.UUID, error) {
 	tx := ctx.DB().Begin()
 	defer tx.Rollback()
 
@@ -38,7 +38,7 @@ func CreatePerson(ctx *api.Context, username, password string) (uuid.UUID, error
 	}
 
 	accessToken := models.AccessToken{
-		Value:     password, // TODO: bcrypt
+		Value:     hashedPassword,
 		PersonID:  person.ID,
 		ExpiresAt: time.Now().Add(time.Hour), // TODO: decide on this one
 	}
